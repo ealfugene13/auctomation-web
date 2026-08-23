@@ -28,6 +28,7 @@
     <section class="card">
 
       <div class="brand">
+
         <img
           src="logo.png"
           alt="Auctomation"
@@ -35,23 +36,39 @@
         />
 
         <div>
-          <h1>Auctomation</h1>
+
+          <h1>
+            Auctomation
+          </h1>
+
           <p class="subtitle">
             Facebook Auction Automation
           </p>
+
         </div>
+
       </div>
 
       <div class="divider"></div>
 
-      <section id="connect-section">
 
-        <h2>Connect your Facebook Page</h2>
+      <!-- ===================================================
+           CONNECT SECTION
+           =================================================== -->
+
+      <section
+        id="connect-section"
+      >
+
+        <h2>
+          Connect your Facebook Page
+        </h2>
 
         <p class="description">
           Connect the Facebook account that manages
           the Page you want to use with Auctomation.
         </p>
+
 
         <div class="field-group">
 
@@ -68,6 +85,7 @@
 
         </div>
 
+
         <button
           id="connectFacebook"
           class="facebook-button"
@@ -75,12 +93,18 @@
           Connect with Facebook
         </button>
 
+
         <p
           id="connectMessage"
           class="message"
         ></p>
 
       </section>
+
+
+      <!-- ===================================================
+           CONNECTED PAGES SECTION
+           =================================================== -->
 
       <section
         id="pages-section"
@@ -90,13 +114,18 @@
         <div class="status-header">
 
           <div>
-            <h2>Connected Pages</h2>
+
+            <h2>
+              Connected Pages
+            </h2>
 
             <p class="description">
               These are the Facebook Pages connected
               to your Auctomation account.
             </p>
+
           </div>
+
 
           <span class="status-badge">
             Connected
@@ -104,10 +133,12 @@
 
         </div>
 
+
         <div
           id="pagesList"
           class="pages-list"
         ></div>
+
 
         <button
           id="refreshPages"
@@ -116,7 +147,27 @@
           Refresh Pages
         </button>
 
+
+        <button
+          id="reconnectFacebook"
+          class="facebook-button"
+          style="margin-top: 12px;"
+        >
+          Reconnect Facebook
+        </button>
+
+
+        <p
+          id="pagesMessage"
+          class="message"
+        ></p>
+
       </section>
+
+
+      <!-- ===================================================
+           FOOTER
+           =================================================== -->
 
       <div class="footer">
 
@@ -129,6 +180,7 @@
     </section>
 
   </main>
+
 
   <script src="config.js"></script>
   <script src="app.js"></script>
