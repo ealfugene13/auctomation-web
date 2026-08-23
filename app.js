@@ -35,6 +35,14 @@ const refreshButton =
 
 
 /* =========================================================
+   STORAGE KEY
+   ========================================================= */
+
+const CLIENT_STORAGE_KEY =
+  "auctomation_client_id";
+
+
+/* =========================================================
    READ QUERY PARAMETERS
    ========================================================= */
 
@@ -55,39 +63,36 @@ function getQueryParameter(
 
 
 /* =========================================================
-   CLIENT ID
+   GET CLIENT ID
+   =========================================================
+   
+   Priority:
+   
+   1. URL parameter
+   2. Local storage
+   3. Input field
+   
+   The URL must have priority because Facebook OAuth
+   redirects back with:
+   
+   ?client_id=...
+   &facebook_connected=true
    ========================================================= */
 
 function getClientId() {
-
-  const inputValue =
-    clientIdInput.value.trim();
-
-  if (
-    inputValue
-  ) {
-
-    localStorage.setItem(
-      "auctomation_client_id",
-      inputValue
-    );
-
-    return inputValue;
-
-  }
-
 
   const queryClientId =
     getQueryParameter(
       "client_id"
     );
 
+
   if (
     queryClientId
   ) {
 
     localStorage.setItem(
-      "auctomation_client_id",
+      CLIENT_STORAGE_KEY,
       queryClientId
     );
 
@@ -96,9 +101,40 @@ function getClientId() {
   }
 
 
-  return localStorage.getItem(
-    "auctomation_client_id"
-  );
+  const storedClientId =
+    localStorage.getItem(
+      CLIENT_STORAGE_KEY
+    );
+
+
+  if (
+    storedClientId
+  ) {
+
+    return storedClientId;
+
+  }
+
+
+  const inputValue =
+    clientIdInput.value.trim();
+
+
+  if (
+    inputValue
+  ) {
+
+    localStorage.setItem(
+      CLIENT_STORAGE_KEY,
+      inputValue
+    );
+
+    return inputValue;
+
+  }
+
+
+  return null;
 
 }
 
@@ -114,18 +150,27 @@ function restoreClientId() {
       "client_id"
     );
 
+
   const storedClientId =
     localStorage.getItem(
-      "auctomation_client_id"
+      CLIENT_STORAGE_KEY
     );
+
 
   const clientId =
     queryClientId ||
     storedClientId;
 
+
   if (
     clientId
   ) {
+
+    localStorage.setItem(
+      CLIENT_STORAGE_KEY,
+      clientId
+    );
+
 
     clientIdInput.value =
       clientId;
@@ -136,16 +181,58 @@ function restoreClientId() {
 
 
 /* =========================================================
+   SHOW CONNECT SCREEN
+   ========================================================= */
+
+function showConnectScreen() {
+
+  connectSection.classList.remove(
+    "hidden"
+  );
+
+
+  pagesSection.classList.add(
+    "hidden"
+  );
+
+}
+
+
+/* =========================================================
+   SHOW PAGES SCREEN
+   ========================================================= */
+
+function showPagesScreen() {
+
+  connectSection.classList.add(
+    "hidden"
+  );
+
+
+  pagesSection.classList.remove(
+    "hidden"
+  );
+
+}
+
+
+/* =========================================================
    CONNECT FACEBOOK
    ========================================================= */
 
 function connectFacebook() {
 
-  const clientId =
-    getClientId();
+  /*
+   * For a new connection we intentionally use
+   * the value currently entered by the user.
+   */
+
+  const inputClientId =
+    clientIdInput.value.trim();
+
 
   if (
-    !clientId
+    !inputClientId
   ) {
 
     connectMessage.textContent =
@@ -154,6 +241,20 @@ function connectFacebook() {
     return;
 
   }
+
+
+  /*
+   * Save client before leaving GitHub Pages.
+   */
+
+  localStorage.setItem(
+    CLIENT_STORAGE_KEY,
+    inputClientId
+  );
+
+
+  connectButton.disabled =
+    true;
 
 
   connectMessage.textContent =
@@ -168,15 +269,12 @@ function connectFacebook() {
 
   url.searchParams.set(
     "client_id",
-    clientId
+    inputClientId
   );
 
 
   /*
-   * Optional return URL.
-   *
-   * We will update facebook-oauth-callback later
-   * so that it redirects back here after OAuth.
+   * This is available for future callback support.
    */
 
   url.searchParams.set(
@@ -201,13 +299,24 @@ async function loadPages() {
   const clientId =
     getClientId();
 
+
   if (
     !clientId
   ) {
 
+    showConnectScreen();
+
     return;
 
   }
+
+
+  /*
+   * Make sure input also reflects current client.
+   */
+
+  clientIdInput.value =
+    clientId;
 
 
   pagesList.innerHTML =
@@ -232,6 +341,12 @@ async function loadPages() {
     );
 
 
+    console.log(
+      "Loading connected Pages:",
+      url.toString()
+    );
+
+
     const response =
       await fetch(
         url.toString(),
@@ -242,13 +357,50 @@ async function loadPages() {
           headers: {
             Accept:
               "application/json"
-          }
+          },
+
+          cache:
+            "no-store"
         }
       );
 
 
-    const result =
-      await response.json();
+    /*
+     * Read as text first.
+     *
+     * This gives us a useful error if the Edge Function
+     * accidentally returns HTML instead of JSON.
+     */
+
+    const responseText =
+      await response.text();
+
+
+    let result;
+
+
+    try {
+
+      result =
+        JSON.parse(
+          responseText
+        );
+
+    }
+
+    catch {
+
+      throw new Error(
+        `client-pages returned an invalid response: ${responseText}`
+      );
+
+    }
+
+
+    console.log(
+      "client-pages result:",
+      result
+    );
 
 
     if (
@@ -257,6 +409,7 @@ async function loadPages() {
     ) {
 
       throw new Error(
+        result.message ||
         result.error ||
         "Unable to load connected Pages."
       );
@@ -265,33 +418,38 @@ async function loadPages() {
 
 
     const pages =
-      result.pages || [];
+      Array.isArray(
+        result.pages
+      )
+        ? result.pages
+        : [];
 
+
+    /* -----------------------------------------------------
+       NO CONNECTED PAGE
+       ----------------------------------------------------- */
 
     if (
       pages.length === 0
     ) {
 
-      pagesList.innerHTML =
-        `
-          <div class="empty-message">
-            No Facebook Pages connected yet.
-          </div>
-        `;
+      showConnectScreen();
+
+
+      connectMessage.textContent =
+        "No Facebook Pages are connected to this client yet.";
+
 
       return;
 
     }
 
 
-    connectSection.classList.add(
-      "hidden"
-    );
+    /* -----------------------------------------------------
+       CONNECTED
+       ----------------------------------------------------- */
 
-
-    pagesSection.classList.remove(
-      "hidden"
-    );
+    showPagesScreen();
 
 
     pagesList.innerHTML =
@@ -310,6 +468,12 @@ async function loadPages() {
 
       element.className =
         "page-item";
+
+
+      const status =
+        page.connection_status ||
+        page.status ||
+        "CONNECTED";
 
 
       element.innerHTML =
@@ -335,9 +499,7 @@ async function loadPages() {
 
           <div class="page-status">
             ${escapeHtml(
-              page.connection_status ||
-              page.status ||
-              "CONNECTED"
+              status
             )}
           </div>
         `;
@@ -349,29 +511,96 @@ async function loadPages() {
 
     }
 
+
+    /*
+     * Once the connected Page has loaded successfully,
+     * remove OAuth status parameters from the address bar.
+     *
+     * Client ID remains saved in localStorage.
+     */
+
+    cleanOAuthParameters();
+
   }
+
   catch (
     error
   ) {
 
     console.error(
+      "Unable to load connected Pages:",
       error
     );
 
 
-    pagesList.innerHTML =
-      `
-        <div class="empty-message">
-          ${escapeHtml(
-            String(
-              error.message ||
-              error
-            )
-          )}
-        </div>
-      `;
+    /*
+     * Do NOT silently make the user enter the Client ID
+     * again when we already know it.
+     *
+     * Show the actual API error instead.
+     */
+
+    showConnectScreen();
+
+
+    connectMessage.textContent =
+      error instanceof Error
+        ? error.message
+        : String(
+            error
+          );
 
   }
+
+}
+
+
+/* =========================================================
+   CLEAN OAUTH QUERY PARAMETERS
+   ========================================================= */
+
+function cleanOAuthParameters() {
+
+  const url =
+    new URL(
+      window.location.href
+    );
+
+
+  url.searchParams.delete(
+    "facebook_connected"
+  );
+
+
+  url.searchParams.delete(
+    "pages_connected"
+  );
+
+
+  url.searchParams.delete(
+    "client_id"
+  );
+
+
+  const cleanUrl =
+    url.pathname +
+    (
+      url.search
+        ? url.search
+        : ""
+    ) +
+    (
+      url.hash
+        ? url.hash
+        : ""
+    );
+
+
+  window.history.replaceState(
+    {},
+    document.title,
+    cleanUrl
+  );
 
 }
 
@@ -385,24 +614,29 @@ function escapeHtml(
 ) {
 
   return String(
-    value
+    value ?? ""
   )
+
     .replaceAll(
       "&",
       "&amp;"
     )
+
     .replaceAll(
       "<",
       "&lt;"
     )
+
     .replaceAll(
       ">",
       "&gt;"
     )
+
     .replaceAll(
       '"',
       "&quot;"
     )
+
     .replaceAll(
       "'",
       "&#039;"
@@ -428,27 +662,90 @@ refreshButton.addEventListener(
 
 
 /* =========================================================
-   INITIALIZE
+   INITIALIZE APPLICATION
    ========================================================= */
 
-restoreClientId();
+async function initialize() {
+
+  restoreClientId();
 
 
-const oauthSuccess =
-  getQueryParameter(
-    "facebook_connected"
-  );
+  const oauthSuccess =
+    getQueryParameter(
+      "facebook_connected"
+    );
 
 
-if (
-  oauthSuccess ===
-  "true"
-) {
+  const clientId =
+    getClientId();
 
-  connectMessage.textContent =
-    "Facebook connected successfully.";
+
+  /*
+   * Facebook just redirected back successfully.
+   *
+   * Immediately show the connected-pages section while
+   * client-pages is loading instead of showing the Client ID
+   * form again.
+   */
+
+  if (
+    oauthSuccess === "true" &&
+    clientId
+  ) {
+
+    showPagesScreen();
+
+
+    pagesList.innerHTML =
+      `
+        <div class="empty-message">
+          Facebook connected successfully.
+          Loading your Page...
+        </div>
+      `;
+
+  }
+
+
+  /*
+   * Existing returning user with a saved Client ID.
+   */
+
+  else if (
+    clientId
+  ) {
+
+    showPagesScreen();
+
+
+    pagesList.innerHTML =
+      `
+        <div class="empty-message">
+          Loading connected Pages...
+        </div>
+      `;
+
+  }
+
+
+  /*
+   * Brand-new user.
+   */
+
+  else {
+
+    showConnectScreen();
+
+  }
+
+
+  await loadPages();
 
 }
 
 
-loadPages();
+/* =========================================================
+   START
+   ========================================================= */
+
+initialize();
