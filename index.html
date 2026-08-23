@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>Auctomation</title>
+
+  <meta
+    name="description"
+    content="Auctomation - Facebook auction automation for sellers."
+  />
+
+  <link
+    rel="stylesheet"
+    href="styles.css"
+  />
+</head>
+
+<body>
+
+  <main class="page">
+
+    <section class="card">
+
+      <div class="brand">
+        <img
+          src="logo.png"
+          alt="Auctomation"
+          class="logo"
+        />
+
+        <div>
+          <h1>Auctomation</h1>
+          <p class="subtitle">
+            Facebook Auction Automation
+          </p>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <section id="connect-section">
+
+        <h2>Connect your Facebook Page</h2>
+
+        <p class="description">
+          Connect the Facebook account that manages
+          the Page you want to use with Auctomation.
+        </p>
+
+        <div class="field-group">
+
+          <label for="clientId">
+            Client ID
+          </label>
+
+          <input
+            id="clientId"
+            type="text"
+            placeholder="Enter client ID"
+            autocomplete="off"
+          />
+
+        </div>
+
+        <button
+          id="connectFacebook"
+          class="facebook-button"
+        >
+          Connect with Facebook
+        </button>
+
+        <p
+          id="connectMessage"
+          class="message"
+        ></p>
+
+      </section>
+
+      <section
+        id="pages-section"
+        class="hidden"
+      >
+
+        <div class="status-header">
+
+          <div>
+            <h2>Connected Pages</h2>
+
+            <p class="description">
+              These are the Facebook Pages connected
+              to your Auctomation account.
+            </p>
+          </div>
+
+          <span class="status-badge">
+            Connected
+          </span>
+
+        </div>
+
+        <div
+          id="pagesList"
+          class="pages-list"
+        ></div>
+
+        <button
+          id="refreshPages"
+          class="secondary-button"
+        >
+          Refresh Pages
+        </button>
+
+      </section>
+
+      <div class="footer">
+
+        <span>
+          Secure Facebook connection powered by Meta OAuth
+        </span>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+
+</body>
+</html>
