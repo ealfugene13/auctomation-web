@@ -53,7 +53,7 @@ const CLIENT_STORAGE_KEY =
 
 
 /* =========================================================
-   READ QUERY PARAMETERS
+   READ QUERY PARAMETER
    ========================================================= */
 
 function getQueryParameter(
@@ -74,13 +74,6 @@ function getQueryParameter(
 
 /* =========================================================
    GET CLIENT ID
-   =========================================================
-   
-   Priority:
-   
-   1. URL parameter
-   2. Local storage
-   3. Input field
    ========================================================= */
 
 function getClientId() {
@@ -121,7 +114,9 @@ function getClientId() {
 
 
   const inputValue =
-    clientIdInput.value.trim();
+    clientIdInput
+      ? clientIdInput.value.trim()
+      : "";
 
 
   if (
@@ -167,7 +162,8 @@ function restoreClientId() {
 
 
   if (
-    clientId
+    clientId &&
+    clientIdInput
   ) {
 
     localStorage.setItem(
@@ -190,14 +186,26 @@ function restoreClientId() {
 
 function showConnectScreen() {
 
-  connectSection.classList.remove(
-    "hidden"
-  );
+  if (
+    connectSection
+  ) {
+
+    connectSection.classList.remove(
+      "hidden"
+    );
+
+  }
 
 
-  pagesSection.classList.add(
-    "hidden"
-  );
+  if (
+    pagesSection
+  ) {
+
+    pagesSection.classList.add(
+      "hidden"
+    );
+
+  }
 
 }
 
@@ -208,14 +216,26 @@ function showConnectScreen() {
 
 function showPagesScreen() {
 
-  connectSection.classList.add(
-    "hidden"
-  );
+  if (
+    connectSection
+  ) {
+
+    connectSection.classList.add(
+      "hidden"
+    );
+
+  }
 
 
-  pagesSection.classList.remove(
-    "hidden"
-  );
+  if (
+    pagesSection
+  ) {
+
+    pagesSection.classList.remove(
+      "hidden"
+    );
+
+  }
 
 }
 
@@ -228,6 +248,18 @@ function buildFacebookOAuthUrl(
   clientId
 ) {
 
+  if (
+    !CONFIG ||
+    !CONFIG.FACEBOOK_OAUTH_START
+  ) {
+
+    throw new Error(
+      "FACEBOOK_OAUTH_START is not configured."
+    );
+
+  }
+
+
   const url =
     new URL(
       CONFIG.FACEBOOK_OAUTH_START
@@ -239,10 +271,6 @@ function buildFacebookOAuthUrl(
     clientId
   );
 
-
-  /*
-   * Useful for future callback handling.
-   */
 
   url.searchParams.set(
     "return_url",
@@ -263,15 +291,24 @@ function buildFacebookOAuthUrl(
 function connectFacebook() {
 
   const inputClientId =
-    clientIdInput.value.trim();
+    clientIdInput
+      ? clientIdInput.value.trim()
+      : "";
 
 
   if (
     !inputClientId
   ) {
 
-    connectMessage.textContent =
-      "Please enter your Client ID.";
+    if (
+      connectMessage
+    ) {
+
+      connectMessage.textContent =
+        "Please enter your Client ID.";
+
+    }
+
 
     return;
 
@@ -284,43 +321,118 @@ function connectFacebook() {
   );
 
 
-  connectButton.disabled =
-    true;
+  if (
+    connectButton
+  ) {
+
+    connectButton.disabled =
+      true;
+
+  }
 
 
-  connectMessage.textContent =
-    "Redirecting to Facebook...";
+  if (
+    connectMessage
+  ) {
+
+    connectMessage.textContent =
+      "Redirecting to Facebook...";
+
+  }
 
 
-  window.location.href =
-    buildFacebookOAuthUrl(
-      inputClientId
+  try {
+
+    const oauthUrl =
+      buildFacebookOAuthUrl(
+        inputClientId
+      );
+
+
+    console.log(
+      "Connecting Facebook:",
+      oauthUrl
     );
+
+
+    window.location.assign(
+      oauthUrl
+    );
+
+  }
+
+  catch (
+    error
+  ) {
+
+    console.error(
+      "Connect Facebook error:",
+      error
+    );
+
+
+    if (
+      connectButton
+    ) {
+
+      connectButton.disabled =
+        false;
+
+    }
+
+
+    if (
+      connectMessage
+    ) {
+
+      connectMessage.textContent =
+        error instanceof Error
+          ? error.message
+          : String(
+              error
+            );
+
+    }
+
+  }
 
 }
 
 
 /* =========================================================
    RECONNECT FACEBOOK
-   =========================================================
-   
-   This allows an already-connected client to run
-   Facebook OAuth again so the stored Page access token
-   can be refreshed with newly approved permissions.
    ========================================================= */
 
 function reconnectFacebook() {
 
+  console.log(
+    "Reconnect Facebook clicked"
+  );
+
+
   const clientId =
     getClientId();
+
+
+  console.log(
+    "Reconnect client ID:",
+    clientId
+  );
 
 
   if (
     !clientId
   ) {
 
-    pagesMessage.textContent =
-      "Client ID is missing. Please reconnect from the main screen.";
+    if (
+      pagesMessage
+    ) {
+
+      pagesMessage.textContent =
+        "Client ID is missing. Please reconnect from the main screen.";
+
+    }
+
 
     showConnectScreen();
 
@@ -329,21 +441,35 @@ function reconnectFacebook() {
   }
 
 
-  reconnectButton.disabled =
-    true;
+  if (
+    reconnectButton
+  ) {
+
+    reconnectButton.disabled =
+      true;
+
+  }
 
 
-  refreshButton.disabled =
-    true;
+  if (
+    refreshButton
+  ) {
+
+    refreshButton.disabled =
+      true;
+
+  }
 
 
-  pagesMessage.textContent =
-    "Redirecting to Facebook to refresh your Page connection...";
+  if (
+    pagesMessage
+  ) {
 
+    pagesMessage.textContent =
+      "Redirecting to Facebook to refresh your Page connection...";
 
-  /*
-   * Preserve client ID before leaving the website.
-   */
+  }
+
 
   localStorage.setItem(
     CLIENT_STORAGE_KEY,
@@ -351,10 +477,70 @@ function reconnectFacebook() {
   );
 
 
-  window.location.href =
-    buildFacebookOAuthUrl(
-      clientId
+  try {
+
+    const oauthUrl =
+      buildFacebookOAuthUrl(
+        clientId
+      );
+
+
+    console.log(
+      "Reconnect OAuth URL:",
+      oauthUrl
     );
+
+
+    window.location.assign(
+      oauthUrl
+    );
+
+  }
+
+  catch (
+    error
+  ) {
+
+    console.error(
+      "Reconnect Facebook error:",
+      error
+    );
+
+
+    if (
+      reconnectButton
+    ) {
+
+      reconnectButton.disabled =
+        false;
+
+    }
+
+
+    if (
+      refreshButton
+    ) {
+
+      refreshButton.disabled =
+        false;
+
+    }
+
+
+    if (
+      pagesMessage
+    ) {
+
+      pagesMessage.textContent =
+        error instanceof Error
+          ? error.message
+          : String(
+              error
+            );
+
+    }
+
+  }
 
 }
 
@@ -380,31 +566,73 @@ async function loadPages() {
   }
 
 
-  clientIdInput.value =
-    clientId;
+  if (
+    clientIdInput
+  ) {
+
+    clientIdInput.value =
+      clientId;
+
+  }
 
 
-  pagesList.innerHTML =
-    `
-      <div class="empty-message">
-        Loading connected Pages...
-      </div>
-    `;
+  if (
+    pagesList
+  ) {
+
+    pagesList.innerHTML =
+      `
+        <div class="empty-message">
+          Loading connected Pages...
+        </div>
+      `;
+
+  }
 
 
-  pagesMessage.textContent =
-    "";
+  if (
+    pagesMessage
+  ) {
+
+    pagesMessage.textContent =
+      "";
+
+  }
 
 
-  refreshButton.disabled =
-    true;
+  if (
+    refreshButton
+  ) {
+
+    refreshButton.disabled =
+      true;
+
+  }
 
 
-  reconnectButton.disabled =
-    true;
+  if (
+    reconnectButton
+  ) {
+
+    reconnectButton.disabled =
+      true;
+
+  }
 
 
   try {
+
+    if (
+      !CONFIG ||
+      !CONFIG.CLIENT_PAGES_ENDPOINT
+    ) {
+
+      throw new Error(
+        "CLIENT_PAGES_ENDPOINT is not configured."
+      );
+
+    }
+
 
     const url =
       new URL(
@@ -506,8 +734,14 @@ async function loadPages() {
       showConnectScreen();
 
 
-      connectMessage.textContent =
-        "No Facebook Pages are connected to this client yet.";
+      if (
+        connectMessage
+      ) {
+
+        connectMessage.textContent =
+          "No Facebook Pages are connected to this client yet.";
+
+      }
 
 
       return;
@@ -522,8 +756,14 @@ async function loadPages() {
     showPagesScreen();
 
 
-    pagesList.innerHTML =
-      "";
+    if (
+      pagesList
+    ) {
+
+      pagesList.innerHTML =
+        "";
+
+    }
 
 
     for (
@@ -575,9 +815,15 @@ async function loadPages() {
         `;
 
 
-      pagesList.appendChild(
-        element
-      );
+      if (
+        pagesList
+      ) {
+
+        pagesList.appendChild(
+          element
+        );
+
+      }
 
     }
 
@@ -590,7 +836,8 @@ async function loadPages() {
 
     if (
       oauthSuccess ===
-      "true"
+        "true" &&
+      pagesMessage
     ) {
 
       pagesMessage.textContent =
@@ -616,23 +863,41 @@ async function loadPages() {
     showConnectScreen();
 
 
-    connectMessage.textContent =
-      error instanceof Error
-        ? error.message
-        : String(
-            error
-          );
+    if (
+      connectMessage
+    ) {
+
+      connectMessage.textContent =
+        error instanceof Error
+          ? error.message
+          : String(
+              error
+            );
+
+    }
 
   }
 
   finally {
 
-    refreshButton.disabled =
-      false;
+    if (
+      refreshButton
+    ) {
+
+      refreshButton.disabled =
+        false;
+
+    }
 
 
-    reconnectButton.disabled =
-      false;
+    if (
+      reconnectButton
+    ) {
+
+      reconnectButton.disabled =
+        false;
+
+    }
 
   }
 
@@ -640,7 +905,7 @@ async function loadPages() {
 
 
 /* =========================================================
-   CLEAN OAUTH QUERY PARAMETERS
+   CLEAN OAUTH PARAMETERS
    ========================================================= */
 
 function cleanOAuthParameters() {
@@ -730,32 +995,55 @@ function escapeHtml(
 
 
 /* =========================================================
-   EVENTS
+   EVENT LISTENERS
    ========================================================= */
 
-connectButton.addEventListener(
-  "click",
-  connectFacebook
-);
+if (
+  connectButton
+) {
+
+  connectButton.addEventListener(
+    "click",
+    connectFacebook
+  );
+
+}
 
 
-reconnectButton.addEventListener(
-  "click",
-  reconnectFacebook
-);
+if (
+  reconnectButton
+) {
+
+  reconnectButton.addEventListener(
+    "click",
+    reconnectFacebook
+  );
+
+}
 
 
-refreshButton.addEventListener(
-  "click",
-  loadPages
-);
+if (
+  refreshButton
+) {
+
+  refreshButton.addEventListener(
+    "click",
+    loadPages
+  );
+
+}
 
 
 /* =========================================================
-   INITIALIZE APPLICATION
+   INITIALIZE
    ========================================================= */
 
 async function initialize() {
+
+  console.log(
+    "Auctomation frontend initialized"
+  );
+
 
   restoreClientId();
 
@@ -770,9 +1058,11 @@ async function initialize() {
     getClientId();
 
 
-  /*
-   * Facebook just redirected back successfully.
-   */
+  console.log(
+    "Initial client ID:",
+    clientId
+  );
+
 
   if (
     oauthSuccess ===
@@ -783,20 +1073,22 @@ async function initialize() {
     showPagesScreen();
 
 
-    pagesList.innerHTML =
-      `
-        <div class="empty-message">
-          Facebook connected successfully.
-          Loading your Page...
-        </div>
-      `;
+    if (
+      pagesList
+    ) {
+
+      pagesList.innerHTML =
+        `
+          <div class="empty-message">
+            Facebook connected successfully.
+            Loading your Page...
+          </div>
+        `;
+
+    }
 
   }
 
-
-  /*
-   * Existing connected client.
-   */
 
   else if (
     clientId
@@ -805,19 +1097,21 @@ async function initialize() {
     showPagesScreen();
 
 
-    pagesList.innerHTML =
-      `
-        <div class="empty-message">
-          Loading connected Pages...
-        </div>
-      `;
+    if (
+      pagesList
+    ) {
+
+      pagesList.innerHTML =
+        `
+          <div class="empty-message">
+            Loading connected Pages...
+          </div>
+        `;
+
+    }
 
   }
 
-
-  /*
-   * New client.
-   */
 
   else {
 
