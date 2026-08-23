@@ -8,9 +8,19 @@ const connectButton =
     "connectFacebook"
   );
 
+const reconnectButton =
+  document.getElementById(
+    "reconnectFacebook"
+  );
+
 const connectMessage =
   document.getElementById(
     "connectMessage"
+  );
+
+const pagesMessage =
+  document.getElementById(
+    "pagesMessage"
   );
 
 const connectSection =
@@ -71,12 +81,6 @@ function getQueryParameter(
    1. URL parameter
    2. Local storage
    3. Input field
-   
-   The URL must have priority because Facebook OAuth
-   redirects back with:
-   
-   ?client_id=...
-   &facebook_connected=true
    ========================================================= */
 
 function getClientId() {
@@ -217,15 +221,46 @@ function showPagesScreen() {
 
 
 /* =========================================================
+   BUILD FACEBOOK OAUTH URL
+   ========================================================= */
+
+function buildFacebookOAuthUrl(
+  clientId
+) {
+
+  const url =
+    new URL(
+      CONFIG.FACEBOOK_OAUTH_START
+    );
+
+
+  url.searchParams.set(
+    "client_id",
+    clientId
+  );
+
+
+  /*
+   * Useful for future callback handling.
+   */
+
+  url.searchParams.set(
+    "return_url",
+    window.location.origin +
+    window.location.pathname
+  );
+
+
+  return url.toString();
+
+}
+
+
+/* =========================================================
    CONNECT FACEBOOK
    ========================================================= */
 
 function connectFacebook() {
-
-  /*
-   * For a new connection we intentionally use
-   * the value currently entered by the user.
-   */
 
   const inputClientId =
     clientIdInput.value.trim();
@@ -243,10 +278,6 @@ function connectFacebook() {
   }
 
 
-  /*
-   * Save client before leaving GitHub Pages.
-   */
-
   localStorage.setItem(
     CLIENT_STORAGE_KEY,
     inputClientId
@@ -261,31 +292,69 @@ function connectFacebook() {
     "Redirecting to Facebook...";
 
 
-  const url =
-    new URL(
-      CONFIG.FACEBOOK_OAUTH_START
+  window.location.href =
+    buildFacebookOAuthUrl(
+      inputClientId
     );
 
+}
 
-  url.searchParams.set(
-    "client_id",
-    inputClientId
-  );
+
+/* =========================================================
+   RECONNECT FACEBOOK
+   =========================================================
+   
+   This allows an already-connected client to run
+   Facebook OAuth again so the stored Page access token
+   can be refreshed with newly approved permissions.
+   ========================================================= */
+
+function reconnectFacebook() {
+
+  const clientId =
+    getClientId();
+
+
+  if (
+    !clientId
+  ) {
+
+    pagesMessage.textContent =
+      "Client ID is missing. Please reconnect from the main screen.";
+
+    showConnectScreen();
+
+    return;
+
+  }
+
+
+  reconnectButton.disabled =
+    true;
+
+
+  refreshButton.disabled =
+    true;
+
+
+  pagesMessage.textContent =
+    "Redirecting to Facebook to refresh your Page connection...";
 
 
   /*
-   * This is available for future callback support.
+   * Preserve client ID before leaving the website.
    */
 
-  url.searchParams.set(
-    "return_url",
-    window.location.origin +
-    window.location.pathname
+  localStorage.setItem(
+    CLIENT_STORAGE_KEY,
+    clientId
   );
 
 
   window.location.href =
-    url.toString();
+    buildFacebookOAuthUrl(
+      clientId
+    );
 
 }
 
@@ -311,10 +380,6 @@ async function loadPages() {
   }
 
 
-  /*
-   * Make sure input also reflects current client.
-   */
-
   clientIdInput.value =
     clientId;
 
@@ -325,6 +390,18 @@ async function loadPages() {
         Loading connected Pages...
       </div>
     `;
+
+
+  pagesMessage.textContent =
+    "";
+
+
+  refreshButton.disabled =
+    true;
+
+
+  reconnectButton.disabled =
+    true;
 
 
   try {
@@ -364,13 +441,6 @@ async function loadPages() {
         }
       );
 
-
-    /*
-     * Read as text first.
-     *
-     * This gives us a useful error if the Edge Function
-     * accidentally returns HTML instead of JSON.
-     */
 
     const responseText =
       await response.text();
@@ -512,12 +582,22 @@ async function loadPages() {
     }
 
 
-    /*
-     * Once the connected Page has loaded successfully,
-     * remove OAuth status parameters from the address bar.
-     *
-     * Client ID remains saved in localStorage.
-     */
+    const oauthSuccess =
+      getQueryParameter(
+        "facebook_connected"
+      );
+
+
+    if (
+      oauthSuccess ===
+      "true"
+    ) {
+
+      pagesMessage.textContent =
+        "Facebook connection refreshed successfully.";
+
+    }
+
 
     cleanOAuthParameters();
 
@@ -533,13 +613,6 @@ async function loadPages() {
     );
 
 
-    /*
-     * Do NOT silently make the user enter the Client ID
-     * again when we already know it.
-     *
-     * Show the actual API error instead.
-     */
-
     showConnectScreen();
 
 
@@ -549,6 +622,17 @@ async function loadPages() {
         : String(
             error
           );
+
+  }
+
+  finally {
+
+    refreshButton.disabled =
+      false;
+
+
+    reconnectButton.disabled =
+      false;
 
   }
 
@@ -655,6 +739,12 @@ connectButton.addEventListener(
 );
 
 
+reconnectButton.addEventListener(
+  "click",
+  reconnectFacebook
+);
+
+
 refreshButton.addEventListener(
   "click",
   loadPages
@@ -682,14 +772,11 @@ async function initialize() {
 
   /*
    * Facebook just redirected back successfully.
-   *
-   * Immediately show the connected-pages section while
-   * client-pages is loading instead of showing the Client ID
-   * form again.
    */
 
   if (
-    oauthSuccess === "true" &&
+    oauthSuccess ===
+      "true" &&
     clientId
   ) {
 
@@ -708,7 +795,7 @@ async function initialize() {
 
 
   /*
-   * Existing returning user with a saved Client ID.
+   * Existing connected client.
    */
 
   else if (
@@ -729,7 +816,7 @@ async function initialize() {
 
 
   /*
-   * Brand-new user.
+   * New client.
    */
 
   else {
